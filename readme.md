@@ -1,6 +1,7 @@
 # Gelbooru Deep Search Generator
 
-This Python script generates search lines that allow you to bypass limitations of Gelbooru search of 20000 images. It helps in efficiently finding posts that match specific tags by breaking down the search into manageable chunks.
+This Python script generates search lines that allow you to bypass limitations of Gelbooru search of 20000 images. It helps in efficiently finding posts that match specific tags by breaking down the search into manageable chunks.  
+Useful for Hydrus Network gallery downloading.  
 
 ## Features
 
@@ -37,7 +38,7 @@ python gelbooru_deep_search.py -t <tag1> <tag2> ... -o <output_file>
 ### Arguments
 
 - `-t`, `--tags`: Space-separated list of tags to search for.
-- `-o`, `--output`: Output file where the search results will be saved.
+- `-o`, `--output`: Output file where the search querries will be saved.
 
 ### Example
 
