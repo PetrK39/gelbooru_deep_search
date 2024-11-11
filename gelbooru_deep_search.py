@@ -3,26 +3,26 @@ import asyncio
 import os
 import sys
 import shutil
-from typing import List
-from pygelbooru import Gelbooru
+from typing import List, Optional, Coroutine
+from pygelbooru import Gelbooru, API_GELBOORU
+import logging
+logging.basicConfig(stream=sys.stderr, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 MAX_POSTS_PER_SEARCH = 20000
 MAX_POSTS_PER_PAGE = 100
 
-async def generate_deep_search(tags: List[str], output_file: str):
-    print("Generating deep search...")
-
-    check_if_output_file_exist(output_file)
+async def generate_deep_search(tags: List[str]) -> list[str]:
+    logging.info("Generating deep search...")
 
     gelbooru = Gelbooru()
 
     last_id = await get_last_id_async(gelbooru, tags)
 
     if(last_id == -1):
-        print("Check your --tags, search returned no posts!")
+        logging.error("Check your --tags, search returned no posts!")
         return
     
-    print(f"Last post id is {last_id}")
+    logging.info(f"Last post id is {last_id}")
 
     last_seen_id = 0
     steps = []
@@ -31,24 +31,11 @@ async def generate_deep_search(tags: List[str], output_file: str):
         temp = await find_last_id_from_min_id_async(gelbooru, tags, last_seen_id)
         if(temp == -1):
             break
-        print(f"Added step: {last_seen_id}, {temp}")
+        logging.info(f"Added step: {last_seen_id}, {temp}")
         steps.append((last_seen_id, temp))
         last_seen_id = temp
 
-    with open(output_file, 'a') as file:
-        file.writelines(f"{' '.join(tags)} id:>{step[0]} id:<{step[1]}" + '\n' for step in steps)
-    print(f"{len(steps)} lines was appended to file")
-
-def check_if_output_file_exist(output_file: str):
-    if os.path.exists(output_file):
-        print(f"Seems like output file {output_file} already exists.")
-
-        key = input("Do you want to delete it? (Y/n): ").strip().lower()
-        if key == 'y' or key == '':
-            print(f"Deleting file {output_file}")
-            os.remove(output_file)
-        else:
-            print(f"Output would be appended to existing file")
+    return [f"{' '.join(tags)} id:>{step[0]} id:<{step[1]}" for step in steps]
 
 async def get_last_id_async(gelbooru: Gelbooru, tags: List[str]) -> int:
     post = await gelbooru.search_posts(tags=tags, limit=1)
@@ -68,7 +55,7 @@ async def find_last_id_from_min_id_async(gelbooru: Gelbooru, tags: List[str], mi
     posts_last_page = await gelbooru.search_posts(tags=tags + ['sort:id:asc', f'id:>{min_id}'], 
                                                   limit=MAX_POSTS_PER_PAGE, 
                                                   page=max_page)
-    print(f"Reversed search, last page had {len(posts_last_page)} posts")
+    logging.info(f"Reversed search, last page had {len(posts_last_page)} posts")
     if(len(posts_last_page) == MAX_POSTS_PER_PAGE):
         return posts_last_page[-1].id
 
@@ -76,7 +63,7 @@ async def find_last_id_from_min_id_async(gelbooru: Gelbooru, tags: List[str], mi
     posts_first_page = await gelbooru.search_posts(tags=tags + ['sort:id:asc', f'id:>{min_id}'], 
                                                    limit=MAX_POSTS_PER_PAGE, 
                                                    page=0)
-    print(f"Reversed search, first page had {len(posts_first_page)} posts")
+    logging.info(f"Reversed search, first page had {len(posts_first_page)} posts")
     if(0 < len(posts_first_page) < MAX_POSTS_PER_PAGE):
         return posts_first_page[-1].id
     elif(len(posts_first_page) == 0):
@@ -114,14 +101,17 @@ def print_visualisation(left: int, right:int, mid:int):
     visualisation[right % terminal_width] = '|'
     visualisation[mid % terminal_width] = '+'
     string = ''.join(visualisation)
-    sys.stdout.write(f"\r{string}")
-    sys.stdout.flush()
+    sys.stderr.write(f"\r{string}")
+    sys.stderr.flush()
+
+async def main(tags: list[str]): #, api_key: Optional[str], user_id: Optional[str], api: Optional[str] = API_GELBOORU) -> list[str]:
+    for deep_tag in await generate_deep_search(tags):
+        print(deep_tag)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Gelbooru Deep Search Generator")
     parser.add_argument("-t", "--tags", nargs="+", required=True, help="Tags to search for")
-    parser.add_argument("-o", "--output", required=True, help="Output file for results")
 
     args = parser.parse_args()
 
-    asyncio.run(generate_deep_search(args.tags, args.output))
+    asyncio.run(main(args.tags))
