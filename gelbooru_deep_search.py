@@ -3,7 +3,7 @@ import asyncio
 import os
 import sys
 import shutil
-from argparse import ArgumentError
+from argparse import ArgumentError, Namespace, ArgumentParser
 from asyncio import AbstractEventLoop
 from sys import stderr
 from typing import List, Optional, Coroutine, Literal
@@ -84,7 +84,7 @@ async def find_last_id_from_min_id_async(gelbooru: Gelbooru, booru_config: Booru
 
     # check if we hit last or beyond last page
     posts_first_page = await gelbooru.search_posts(tags=tags + ['sort:id:asc', f'id:>{min_id}'], 
-                                                   limit=MAX_POSTS_PER_PAGE, 
+                                                   limit=booru_config.max_posts_per_page,
                                                    page=0)
     logging.info(f"Reversed search, first page had {len(posts_first_page)} posts")
     if(0 < len(posts_first_page) < booru_config.max_posts_per_page):
@@ -128,6 +128,22 @@ def print_visualisation(left: int, right:int, mid:int):
     sys.stderr.write(f"\r{string}")
     sys.stderr.flush()
 
+def check_user_key_both_or_none():
+    if args.user and not args.key:
+        parser.error("When using --user you should also specify --key")
+    elif not args.user and args.key:
+        parser.error("When using --key you should also specify --user")
+
+def check_have_limits_on_custom_booru():
+    if args.api in KNOWN_API:
+        pass
+    elif not args.max_per_search and not args.max_per_page:
+        parser.error("When using custom booru API --max-per-search and --max-per-page should be specified")
+    elif not args.max_per_search:
+        parser.error("When using custom booru API --max-per-search should be specified")
+    elif not args.max_per_page:
+        parser.error("When using custom booru API --max-per-page should be specified")
+
 async def main(tags: list[str],
                user_id: str | None, api_key: str | None,
                api: str, max_per_search: int, max_per_page: int,
@@ -153,16 +169,15 @@ if __name__ == "__main__":
     parser.add_argument("-u", "--user", type=str, required=False, default=None, help="Not required. User ID.")
     parser.add_argument("-k", "--key", type=str, required=False, default=None, help="Not required. API key.")
     parser.add_argument("-a", "--api", type=str, required=False, default="gelbooru", help=f"Not required. API URL or known label such as {', '.join(KNOWN_API.keys())}. Default is \'gelbooru\'.")
-    parser.add_argument("--max-per-search", type=int, required=False, default=20_000, help="Required if custom Gelbooru-compatible API is used. Represents maximum offset of pagination")
-    parser.add_argument("--max-per-page", type=int, required=False, default=100, help="Required if custom Gelbooru-compatible API is used. Represents maximum posts retrieved with one API call")
+    parser.add_argument("--max-per-search", type=int, required=False, help="Required if custom Gelbooru-compatible API is used. Represents maximum offset of pagination")
+    parser.add_argument("--max-per-page", type=int, required=False, help="Required if custom Gelbooru-compatible API is used. Represents maximum posts retrieved with one API call")
 
     parser.add_argument("--no-visualizer", required=False, action="store_false", help="Not required. Disable binary search visualization.")
     parser.add_argument("--log-level", type=str, required=False, choices=["debug", "info", "warning", "error", "critical"], default="info", help="Not required. Logging level. Default is \'info\'.")
 
     args = parser.parse_args()
-
-
-
+    check_user_key_both_or_none()
+    check_have_limits_on_custom_booru()
 
     logging.basicConfig(stream=sys.stderr, level=args.log_level.upper(), format='%(asctime)s - %(levelname)s - %(message)s')
 
