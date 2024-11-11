@@ -26,7 +26,7 @@ def build_gelbooru(api_key: str | None = None,
                    api: LiteralString[API_GELBOORU, API_SAFEBOORU, API_RULE34] = API_GELBOORU) -> Gelbooru:
     return Gelbooru(api_key, user_id, loop, api)
 
-async def generate_deep_search(gelbooru: Gelbooru, tags: List[str]) -> list[str]:
+async def generate_deep_search(gelbooru: Gelbooru, tags: list[str]) -> list[str]:
     logging.info("Generating deep search...")
 
     last_id = await get_last_id_async(gelbooru, tags)
@@ -49,7 +49,7 @@ async def generate_deep_search(gelbooru: Gelbooru, tags: List[str]) -> list[str]
 
     return [f"{' '.join(tags)} id:>{step[0]} id:<{step[1]}" for step in steps]
 
-async def get_last_id_async(gelbooru: Gelbooru, tags: List[str]) -> int | None:
+async def get_last_id_async(gelbooru: Gelbooru, tags: list[str]) -> int | None:
     post: GelbooruImage = await gelbooru.search_posts(tags=tags, limit=1)
 
     if not post:
@@ -57,7 +57,7 @@ async def get_last_id_async(gelbooru: Gelbooru, tags: List[str]) -> int | None:
     else:
         return post.id
 
-async def find_last_id_from_min_id_async(gelbooru: Gelbooru, tags: List[str], min_id: int) -> int:
+async def find_last_id_from_min_id_async(gelbooru: Gelbooru, tags: list[str], min_id: int) -> int:
     # adding 1 since we're checking first and last manually
     max_page = int(MAX_POSTS_PER_SEARCH / MAX_POSTS_PER_PAGE)
     left, right = 1, max_page - 1
