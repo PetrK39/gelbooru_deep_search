@@ -26,7 +26,7 @@ def build_gelbooru(api_key: str | None = None,
                    api: str = API_GELBOORU) -> Gelbooru:
     return Gelbooru(api_key, user_id, loop, api)
 
-async def generate_deep_search(gelbooru: Gelbooru, tags: list[str]) -> list[str]:
+async def generate_deep_search(gelbooru: Gelbooru, tags: list[str], visualizer: bool = False) -> list[str]:
     logging.info("Generating deep search...")
 
     last_id = await get_last_id_async(gelbooru, tags)
@@ -40,7 +40,7 @@ async def generate_deep_search(gelbooru: Gelbooru, tags: list[str]) -> list[str]
     steps = []
 
     while last_seen_id <= last_id:
-        temp = await find_last_id_from_min_id_async(gelbooru, tags, last_seen_id)
+        temp = await find_last_id_from_min_id_async(gelbooru, tags, last_seen_id, visualizer)
         if(temp == -1):
             break
         logging.info(f"Added step: {last_seen_id}, {temp}")
@@ -57,7 +57,7 @@ async def get_last_id_async(gelbooru: Gelbooru, tags: list[str]) -> int | None:
     else:
         return post.id
 
-async def find_last_id_from_min_id_async(gelbooru: Gelbooru, tags: list[str], min_id: int) -> int:
+async def find_last_id_from_min_id_async(gelbooru: Gelbooru, tags: list[str], min_id: int, visualizer: bool) -> int:
     # adding 1 since we're checking first and last manually
     max_page = int(MAX_POSTS_PER_SEARCH / MAX_POSTS_PER_PAGE)
     left, right = 1, max_page - 1
@@ -87,7 +87,8 @@ async def find_last_id_from_min_id_async(gelbooru: Gelbooru, tags: list[str], mi
         posts = await gelbooru.search_posts(tags=tags + ['sort:id:asc', f'id:>{min_id}'], 
                                             limit=MAX_POSTS_PER_PAGE, 
                                             page=mid)
-        print_visualisation(left, right, mid)
+        if visualizer:
+            print_visualisation(left, right, mid)
         # if last page with images (0 > len < MAX_PER_PAGE)
         if(0 < len(posts) < MAX_POSTS_PER_PAGE):
             return posts[-1].id
@@ -116,11 +117,11 @@ def print_visualisation(left: int, right:int, mid:int):
     sys.stderr.write(f"\r{string}")
     sys.stderr.flush()
 
-async def main(tags: list[str]): #, api_key: Optional[str], user_id: Optional[str], api: Optional[str] = API_GELBOORU) -> list[str]:
-    gelbooru = build_gelbooru()
+async def main(tags: list[str], user_id: str | None, api_key: str | None, api: str, visualizer: bool): #, api_key: Optional[str], user_id: Optional[str], api: Optional[str] = API_GELBOORU) -> list[str]:
+    gelbooru = build_gelbooru(user_id, api_key, api=api)
 
     try:
-        for deep_tag in await generate_deep_search(gelbooru, tags):
+        for deep_tag in await generate_deep_search(gelbooru, tags, visualizer):
             print(deep_tag)
     except TagsException:
         logging.exception("Failed to find any post for search")
@@ -134,11 +135,11 @@ if __name__ == "__main__":
     parser.add_argument("-k", "--key", type=str, required=False, default=None, help="Not required. API key.")
     parser.add_argument("-a", "--api", type=str, required=False, default=API_GELBOORU, help=f"Not required. API URL or known label such as {', '.join(KNOWN_API.keys())}. Default is \'gelbooru\'.")
 
-    parser.add_argument("--no-visualizer", required=False, action="store_true", help="Not required. Disable binary search visualization.")
+    parser.add_argument("--no-visualizer", required=False, action="store_false", help="Not required. Disable binary search visualization.")
     parser.add_argument("--log-level", type=str, required=False, choices=["debug", "info", "warning", "error", "critical"], default="info", help="Not required. Logging level. Default is \'info\'.")
 
     args = parser.parse_args()
 
     logging.basicConfig(stream=sys.stderr, level=args.log_level.upper(), format='%(asctime)s - %(levelname)s - %(message)s')
 
-    asyncio.run(main(args.tags))
+    asyncio.run(main(args.tags, args.user, args.key, args.api, args.no_visualizer))
