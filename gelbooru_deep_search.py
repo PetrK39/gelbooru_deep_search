@@ -3,24 +3,36 @@ import asyncio
 import os
 import sys
 import shutil
-from typing import List, Optional, Coroutine
-from pygelbooru import Gelbooru, API_GELBOORU
+from argparse import ArgumentError
+from asyncio import AbstractEventLoop
+from sys import stderr
+from typing import List, Optional, Coroutine, Literal
+from pygelbooru import Gelbooru, API_GELBOORU, API_SAFEBOORU, API_RULE34
 import logging
+from pygelbooru.gelbooru import GelbooruImage
+from typing_extensions import LiteralString
+
 logging.basicConfig(stream=sys.stderr, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 MAX_POSTS_PER_SEARCH = 20000
 MAX_POSTS_PER_PAGE = 100
 
-async def generate_deep_search(tags: List[str]) -> list[str]:
-    logging.info("Generating deep search...")
+class TagsException(Exception):
+    pass
 
-    gelbooru = Gelbooru()
+def build_gelbooru(api_key: str | None = None,
+                   user_id: str | None = None,
+                   loop: AbstractEventLoop | None = None,
+                   api: LiteralString[API_GELBOORU, API_SAFEBOORU, API_RULE34] = API_GELBOORU) -> Gelbooru:
+    return Gelbooru(api_key, user_id, loop, api)
+
+async def generate_deep_search(gelbooru: Gelbooru, tags: List[str]) -> list[str]:
+    logging.info("Generating deep search...")
 
     last_id = await get_last_id_async(gelbooru, tags)
 
-    if(last_id == -1):
-        logging.error("Check your --tags, search returned no posts!")
-        return
+    if not last_id:
+        raise TagsException(f"Failed to find any post for search \"{' '.join(tags)}\"")
     
     logging.info(f"Last post id is {last_id}")
 
@@ -37,13 +49,13 @@ async def generate_deep_search(tags: List[str]) -> list[str]:
 
     return [f"{' '.join(tags)} id:>{step[0]} id:<{step[1]}" for step in steps]
 
-async def get_last_id_async(gelbooru: Gelbooru, tags: List[str]) -> int:
-    post = await gelbooru.search_posts(tags=tags, limit=1)
+async def get_last_id_async(gelbooru: Gelbooru, tags: List[str]) -> int | None:
+    post: GelbooruImage = await gelbooru.search_posts(tags=tags, limit=1)
 
-    if post is None or post.id == 0:
-        return -1
-
-    return post.id
+    if not post:
+        return None
+    else:
+        return post.id
 
 async def find_last_id_from_min_id_async(gelbooru: Gelbooru, tags: List[str], min_id: int) -> int:
     # adding 1 since we're checking first and last manually
@@ -105,8 +117,13 @@ def print_visualisation(left: int, right:int, mid:int):
     sys.stderr.flush()
 
 async def main(tags: list[str]): #, api_key: Optional[str], user_id: Optional[str], api: Optional[str] = API_GELBOORU) -> list[str]:
-    for deep_tag in await generate_deep_search(tags):
-        print(deep_tag)
+    gelbooru = build_gelbooru()
+
+    try:
+        for deep_tag in await generate_deep_search(gelbooru, tags):
+            print(deep_tag)
+    except TagsException:
+        logging.exception("Failed to find any post for search")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Gelbooru Deep Search Generator")
