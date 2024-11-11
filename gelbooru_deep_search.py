@@ -148,10 +148,9 @@ async def main(tags: list[str],
                user_id: str | None, api_key: str | None,
                api: str, max_per_search: int, max_per_page: int,
                visualizer: bool):
-    if api in KNOWN_API:
-        booru_config = KNOWN_API[api]
-    else:
-        booru_config = BooruConfig(api=api, max_posts_per_search=max_per_search, max_posts_per_page=max_per_page)
+    booru_config = KNOWN_API.get(api, BooruConfig(api=api,
+                                                  max_posts_per_search=max_per_search,
+                                                  max_posts_per_page=max_per_page))
 
     gelbooru = build_gelbooru(user_id, api_key, api=booru_config.api)
 
