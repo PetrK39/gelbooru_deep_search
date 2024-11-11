@@ -58,7 +58,7 @@ async def generate_deep_search(gelbooru: Gelbooru, booru_config: BooruConfig, ta
         steps.append((last_seen_id, temp))
         last_seen_id = temp
 
-    return [f"{' '.join(tags)} id:>{step[0]} id:<{step[1]}" for step in steps]
+    return [f"{' '.join(tags)} id:>{step[0]} id:<={step[1]}" for step in steps]
 
 async def get_last_id_async(gelbooru: Gelbooru, tags: list[str]) -> int | None:
     post: GelbooruImage = await gelbooru.search_posts(tags=tags, limit=1)
