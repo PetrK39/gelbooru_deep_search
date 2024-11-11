@@ -12,10 +12,10 @@ import logging
 from pygelbooru.gelbooru import GelbooruImage
 from typing_extensions import LiteralString
 
-logging.basicConfig(stream=sys.stderr, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
 MAX_POSTS_PER_SEARCH = 20000
 MAX_POSTS_PER_PAGE = 100
+
+KNOWN_API = {"gelbooru": API_GELBOORU, "safebooru": API_SAFEBOORU, "rule34": API_RULE34}
 
 class TagsException(Exception):
     pass
@@ -127,8 +127,18 @@ async def main(tags: list[str]): #, api_key: Optional[str], user_id: Optional[st
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Gelbooru Deep Search Generator")
-    parser.add_argument("-t", "--tags", nargs="+", required=True, help="Tags to search for")
+
+    parser.add_argument("-t", "--tags", type=str, required=True, nargs="+", help="Required. Tags to search for.")
+
+    parser.add_argument("-u", "--user", type=str, required=False, default=None, help="Not required. User ID.")
+    parser.add_argument("-k", "--key", type=str, required=False, default=None, help="Not required. API key.")
+    parser.add_argument("-a", "--api", type=str, required=False, default=API_GELBOORU, help=f"Not required. API URL or known label such as {', '.join(KNOWN_API.keys())}. Default is \'gelbooru\'.")
+
+    parser.add_argument("--no-visualizer", required=False, action="store_true", help="Not required. Disable binary search visualization.")
+    parser.add_argument("--log-level", type=str, required=False, choices=["debug", "info", "warning", "error", "critical"], default="info", help="Not required. Logging level. Default is \'info\'.")
 
     args = parser.parse_args()
+
+    logging.basicConfig(stream=sys.stderr, level=args.log_level.upper(), format='%(asctime)s - %(levelname)s - %(message)s')
 
     asyncio.run(main(args.tags))
