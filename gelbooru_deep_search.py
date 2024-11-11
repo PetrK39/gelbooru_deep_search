@@ -14,9 +14,6 @@ import logging
 from pygelbooru.gelbooru import GelbooruImage
 from typing_extensions import LiteralString
 
-MAX_POSTS_PER_SEARCH = 20000
-MAX_POSTS_PER_PAGE = 100
-
 @dataclass
 class BooruConfig:
     api: str
