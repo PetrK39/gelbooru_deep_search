@@ -23,7 +23,7 @@ class TagsException(Exception):
 def build_gelbooru(api_key: str | None = None,
                    user_id: str | None = None,
                    loop: AbstractEventLoop | None = None,
-                   api: LiteralString[API_GELBOORU, API_SAFEBOORU, API_RULE34] = API_GELBOORU) -> Gelbooru:
+                   api: str = API_GELBOORU) -> Gelbooru:
     return Gelbooru(api_key, user_id, loop, api)
 
 async def generate_deep_search(gelbooru: Gelbooru, tags: list[str]) -> list[str]:
