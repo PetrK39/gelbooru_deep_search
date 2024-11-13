@@ -20,6 +20,8 @@ class BooruConfig:
     max_posts_per_search: int
     max_posts_per_page: int
 
+class ForbiddenTagsException(Exception):
+    pass
 class TagsException(Exception):
     pass
 
@@ -36,6 +38,12 @@ def build_gelbooru(api_key: str | None = None,
 
 async def generate_deep_search(gelbooru: Gelbooru, booru_config: BooruConfig, tags: list[str], visualizer: bool = False) -> list[tuple[int, int]]:
     logging.info("Generating deep search...")
+
+    # lower tags
+    tags = [tag.lower() for tag in tags]
+
+    # check if tags contains forbidden sort:id* tags
+    check_for_forbidden_tags(tags)
 
     # try get last id for given search
     last_id: int | None = await get_last_id_async(gelbooru, tags)
@@ -147,9 +155,12 @@ def print_visualisation(left: int, right:int, mid:int):
     sys.stderr.write(f"\r{string}")
     sys.stderr.flush()
 
-def format_steps_to_searches(tags: list[str], steps: list[tuple[int, int]]) -> Generator[list[str]]:
-    for step in steps:
-        yield tags + [f"id:>{step[0]}",  f"id:<={step[1]}"]
+def format_steps_to_searches(tags: list[str], steps: list[tuple[int, int]]) -> list[list[str]]:
+    return [tags + [f"id:>{step[0]}",  f"id:<={step[1]}"] for step in steps]
+
+def check_for_forbidden_tags(tags: list[str]) -> None:
+    if "sort:id:asc" in tags or "sort:id:desc" in tags:
+        raise ForbiddenTagsException("Tags shouldn't contain sort:id:* tags as they're used internally")
 
 def build_argparser() -> ArgumentParser:
     parser = argparse.ArgumentParser(description="Gelbooru Deep Search Generator")
@@ -212,8 +223,10 @@ def main() -> None:
 
     try:
         steps = asyncio.run(generate_deep_search(gelbooru, booru_config, args.tags, args.visualizer))
-        for tag in format_steps_to_searches(args.tags, steps):
-            print(tag)
+        for tags_with_steps in format_steps_to_searches(args.tags, steps):
+            print(' '.join(tags_with_steps))
+    except ForbiddenTagsException:
+        logging.exception("Tags contains forbidden tags")
     except TagsException:
         logging.exception("Failed to find any post for search")
 
