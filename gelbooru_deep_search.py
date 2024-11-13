@@ -6,8 +6,7 @@ import shutil
 from argparse import ArgumentError, Namespace, ArgumentParser
 from asyncio import AbstractEventLoop
 from sys import stderr
-from typing import List, Optional, Coroutine, Literal
-from typing import List, Optional, Coroutine, Literal, Tuple
+from typing import List, Optional, Coroutine, Literal, Tuple, Generator
 
 from attr import dataclass
 from pygelbooru import Gelbooru, API_GELBOORU, API_SAFEBOORU, API_RULE34
@@ -35,7 +34,7 @@ def build_gelbooru(api_key: str | None = None,
                    api: str = API_GELBOORU) -> Gelbooru:
     return Gelbooru(api_key, user_id, loop, api)
 
-async def generate_deep_search(gelbooru: Gelbooru, booru_config: BooruConfig, tags: list[str], visualizer: bool = False) -> list[str]:
+async def generate_deep_search(gelbooru: Gelbooru, booru_config: BooruConfig, tags: list[str], visualizer: bool = False) -> list[tuple[int, int]]:
     logging.info("Generating deep search...")
 
     # try get last id for given search
@@ -57,7 +56,7 @@ async def generate_deep_search(gelbooru: Gelbooru, booru_config: BooruConfig, ta
         steps.append((last_seen_id, temp))
         last_seen_id = temp
 
-    return [f"{' '.join(tags)} id:>{step[0]} id:<={step[1]}" for step in steps]
+    return steps
 
 async def get_last_id_async(gelbooru: Gelbooru, tags: list[str]) -> int | None:
     if post:= await gelbooru.search_posts(tags=tags, limit=1):
@@ -148,6 +147,10 @@ def print_visualisation(left: int, right:int, mid:int):
     sys.stderr.write(f"\r{string}")
     sys.stderr.flush()
 
+def format_steps_to_searches(tags: list[str], steps: list[tuple[int, int]]) -> Generator[list[str]]:
+    for step in steps:
+        yield tags + [f"id:>{step[0]}",  f"id:<={step[1]}"]
+
 def build_argparser() -> ArgumentParser:
     parser = argparse.ArgumentParser(description="Gelbooru Deep Search Generator")
 
@@ -208,8 +211,9 @@ def main() -> None:
     gelbooru = build_gelbooru(args.user, args.key, api=booru_config.api)
 
     try:
-        for deep_tag in asyncio.run(generate_deep_search(gelbooru, booru_config, args.tags, args.visualizer)):
-            print(deep_tag)
+        steps = asyncio.run(generate_deep_search(gelbooru, booru_config, args.tags, args.visualizer))
+        for tag in format_steps_to_searches(args.tags, steps):
+            print(tag)
     except TagsException:
         logging.exception("Failed to find any post for search")
 
