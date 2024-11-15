@@ -4,6 +4,7 @@ import logging
 import sys
 import time
 from argparse import Namespace, ArgumentParser
+from typing import Iterator
 from urllib.parse import urlparse
 
 import pygelbooru  # type: ignore
@@ -189,8 +190,7 @@ class GelbooruDeepSearch:
         :return: list[tuple[int, int]]
         """
         # check and prepare tags
-        if ((not isinstance(tags, list) and not all(isinstance(tag, str) for tag in tags))
-                or not isinstance(tags, str)):
+        if not isinstance(tags, str) and (not isinstance(tags, list) or not all(isinstance(tag, str) for tag in tags)):
             raise ValueError("Tags must be a string or a list of strings")
 
         if isinstance(tags, str): tags = [tags]
@@ -402,8 +402,12 @@ class GelbooruDeepSearch:
         self._logger.debug(f"last full page is {last_full_page}, returning id {last_full_page_posts[-1].id}")
         return last_full_page_posts[-1].id
 
-def format_steps_to_searches(tags: list[str], steps: list[tuple[int, int]]) -> list[list[str]]:
-    return [tags + [f"id:>{step[0]}",  f"id:<={step[1]}"] for step in steps] # TODO: fix first search should be id:>=
+def format_steps_to_searches(tags: list[str], steps: list[tuple[int, int]]) -> Iterator[list[str]]:
+    for i, step in enumerate(steps):
+        if i == 0:
+            yield tags + [f"id:>={step[0]}", f"id:<={step[1]}"]
+        else:
+            yield tags + [f"id:>{step[0]}", f"id:<={step[1]}"]
 
 def _build_argparser() -> ArgumentParser:
     parser = argparse.ArgumentParser(description="Gelbooru Deep Search Generator")
