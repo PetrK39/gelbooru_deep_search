@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gelbooru_deep_search"
+version = "0.1.0"
+description = "Generate deep gelbooru search"
+authors = [
+    { name = "PetrK39" }
+]
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "GPL-3.0-or-later" }
+keywords = ["gelbooru", "search", "deep-search"]
+
+dependencies = [
+    "pygelbooru",
+    "attrs"
+]
+
+[project.urls]
+repository = "https://github.com/PetrK39/gelbooru_deep_search"
+
+[project.scripts]
+gelbooru_deep_search = "gelbooru_deep_search:main"
