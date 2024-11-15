@@ -179,25 +179,28 @@ class GelbooruDeepSearch:
 
         self._logger.info(f"Set logging level to {logging.getLevelName(self._logger.level)}")
 
-    async def get_deep_search_steps_async(self, tags: list[str]) -> list[tuple[int, int]]:
+    async def get_deep_search_steps_async(self, tags: list[str] | str) -> list[tuple[int, int]]:
         """
         Generates list of tuple[int, int] each contains min and max post id that fits specified booru's search limits
-        :param tags:
+        :param tags: str or list[str] representing a search, would be split by spaces and fixed automatically
         :raises ValueError: When tags is not a list[str]
         :raises ForbiddenTagsException: When tags contain sort:id:* tags as they're used internally
         :raises EmptySearchException: When search returned no results
         :return: list[tuple[int, int]]
         """
+        # check and prepare tags
+        if ((not isinstance(tags, list) and not all(isinstance(tag, str) for tag in tags))
+                or not isinstance(tags, str)):
+            raise ValueError("Tags must be a string or a list of strings")
+
+        if isinstance(tags, str): tags = [tags]
+        tags = [tag for sublist in tags for tag in sublist.split()]
         self._logger.debug(f"Started deep search for tags {tags}")
 
         # reset stats
         self._logger.debug("Clearing stats")
         self._request_counter = 0
         self._request_time = 0.0
-
-        # check tags
-        if not isinstance(tags, list) or not all(isinstance(tag, str) for tag in tags):
-            raise ValueError("Tags must be a list of strings")
 
         # lower tags
         tags = [tag.lower() for tag in tags]
