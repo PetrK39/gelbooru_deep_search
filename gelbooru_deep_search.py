@@ -423,8 +423,6 @@ def _build_argparser() -> ArgumentParser:
     parser.add_argument("--max-per-page", type=int, required=False,
                         help="Required if custom Gelbooru-compatible API is used. Represents maximum posts retrieved with one API call")
 
-    parser.add_argument("--no-visualizer", required=False, action="store_false", dest="visualizer",
-                        help="Not required. Disable binary search visualization.")
     parser.add_argument("--log-level", type=str, required=False,
                         choices=["debug", "info", "warning", "error", "critical"], default="info",
                         help="Not required. Logging level. Default is \'info\'.")
